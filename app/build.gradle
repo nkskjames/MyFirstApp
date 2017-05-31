@@ -40,6 +40,7 @@ dependencies {
     compile 'com.amazonaws:aws-android-sdk-sns:2.2.+'
     compile 'com.amazonaws:aws-android-sdk-lambda:2.2.+'
     compile 'com.amazonaws:aws-android-sdk-ddb-mapper:2.2.+'
+    compile 'com.squareup.okhttp:okhttp:2.5.0'
     testCompile 'junit:junit:4.12'
 }
 apply plugin: 'com.google.gms.google-services'

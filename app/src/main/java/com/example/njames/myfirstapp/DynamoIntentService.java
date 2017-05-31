@@ -66,7 +66,7 @@ public class DynamoIntentService extends IntentService {
     }
     private void handleActionAddEndpoint() {
         SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
-                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+                Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
         String loginAccount = sharedPref.getString(Constants.LOGIN_ACCOUNT,"");
         String loginToken = sharedPref.getString(Constants.LOGIN_TOKEN,"");
         String firebaseToken = sharedPref.getString(Constants.FIREBASE_TOKEN,"");
