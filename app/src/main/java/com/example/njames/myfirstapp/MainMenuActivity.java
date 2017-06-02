@@ -33,6 +33,19 @@ public class MainMenuActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
     private static final int RC_SIGN_IN = 9001;
     private Spinner list;
+    BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ArrayList<String> things =
+                    intent.getStringArrayListExtra(Constants.EXTRA_THING_LIST);
+
+            ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
+            list.setAdapter(thingAdapter);
+            Log.i(TAG,"updating thing list");
+        }
+    };
+    IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_GET_THINGS);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,24 +54,6 @@ public class MainMenuActivity extends AppCompatActivity implements
         findViewById(R.id.monitor_button).setOnClickListener(this);
         findViewById(R.id.sign_out_button).setOnClickListener(this);
         list = (Spinner)findViewById(R.id.thing_list);
-
-
-        BroadcastReceiver mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                ArrayList<String> things =
-                        intent.getStringArrayListExtra(Constants.EXTRA_THING_LIST);
-
-                ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
-                list.setAdapter(thingAdapter);
-                Log.i(TAG,"updating thing list");
-            }
-        };
-
-        IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_GET_THINGS);
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-                mReceiver,
-                mIntentFilter);
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
@@ -150,4 +145,23 @@ public class MainMenuActivity extends AppCompatActivity implements
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed:" + connectionResult);
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                mReceiver,
+                mIntentFilter);
+
+    }
+
+
+    @Override
+    protected void onPause() {
+        if (mReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        }
+        mReceiver = null;
+        super.onPause();
+    }
+
 }

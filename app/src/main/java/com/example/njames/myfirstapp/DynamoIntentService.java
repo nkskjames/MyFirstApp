@@ -64,6 +64,25 @@ public class DynamoIntentService extends IntentService {
             }
         }
     }
+    public static CognitoCachingCredentialsProvider getCredentialProviderFactory(Context context) {
+        SharedPreferences sharedPref = context.getSharedPreferences(
+                Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
+
+        String loginAccount = sharedPref.getString(Constants.LOGIN_ACCOUNT,"");
+        String loginToken = sharedPref.getString(Constants.LOGIN_TOKEN,"");
+
+        if (loginAccount.isEmpty() || loginToken.isEmpty()) { return null; }
+
+        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                context,    /* get the context for the application */
+                Constants.COGNITO_POOL_ID,    /* Identity Pool ID */
+                Regions.US_WEST_2           /* Region for your identity pool--US_EAST_1 or EU_WEST_1*/
+        );
+        Map<String, String> logins = new HashMap<String, String>();
+        logins.put(loginAccount, loginToken);
+        credentialsProvider.setLogins(logins);
+        return credentialsProvider;
+    }
     private void handleActionAddEndpoint() {
         SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
                 Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);

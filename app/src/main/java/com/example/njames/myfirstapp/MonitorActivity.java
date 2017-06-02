@@ -22,8 +22,26 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 public class MonitorActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = "MonitorActivity";
-    BroadcastReceiver mReceiver;
-    IntentFilter mIntentFilter;
+    BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "Broadcast received");
+            TextView t0 = (TextView) findViewById(R.id.t0_value);
+            TextView t1 = (TextView) findViewById(R.id.t1_value);
+            TextView t2 = (TextView) findViewById(R.id.t2_value);
+            EditText t0l = (EditText) findViewById(R.id.t0_label);
+            EditText t1l = (EditText) findViewById(R.id.t1_label);
+            EditText t2l = (EditText) findViewById(R.id.t2_label);
+            t0.setText(intent.getStringExtra("t0"));
+            t1.setText(intent.getStringExtra("t1"));
+            t2.setText(intent.getStringExtra("t2"));
+            t0l.setText(intent.getStringExtra("d0"));
+            t1l.setText(intent.getStringExtra("d1"));
+            t2l.setText(intent.getStringExtra("d2"));
+        }
+    };
+
+    IntentFilter mIntentFilter = new IntentFilter(Constants.ACTION_RECEIVE_DATA);
     AmazonDynamoDBClient dynamodb;
     CognitoCachingCredentialsProvider credentialsProvider;
     String thingName;
@@ -37,27 +55,6 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
         findViewById(R.id.update_label_button).setOnClickListener(this);
 
         findViewById(R.id.units).setOnClickListener(this);
-        mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                Log.d(TAG, "Broadcast received");
-                TextView t0 = (TextView) findViewById(R.id.t0_value);
-                TextView t1 = (TextView) findViewById(R.id.t1_value);
-                TextView t2 = (TextView) findViewById(R.id.t2_value);
-                EditText t0l = (EditText) findViewById(R.id.t0_label);
-                EditText t1l = (EditText) findViewById(R.id.t1_label);
-                EditText t2l = (EditText) findViewById(R.id.t2_label);
-                t0.setText(intent.getStringExtra("t0"));
-                t1.setText(intent.getStringExtra("t1"));
-                t2.setText(intent.getStringExtra("t2"));
-                t0l.setText(intent.getStringExtra("d0"));
-                t1l.setText(intent.getStringExtra("d1"));
-                t2l.setText(intent.getStringExtra("d2"));
-            }
-        };
-
-        mIntentFilter = new IntentFilter(Constants.ACTION_RECEIVE_DATA);
-        registerReceiver(mReceiver, mIntentFilter);
     }
 
     private void updateLabels() {
@@ -130,29 +127,4 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
         mReceiver = null;
         super.onPause();
     }
-
-
-    private class UpdateShadowTask extends AsyncTask<Void, Void, Void> {
-
-        private String thingName;
-        private String updateState;
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            return null;
-        }
-
-        /*
-        @Override
-        protected void onPostExecute() {
-            if (result.getError() == null) {
-                Log.i(UpdateShadowTask.class.getCanonicalName(), result.getResult());
-            } else {
-                Log.e(UpdateShadowTask.class.getCanonicalName(), "Error in Update Shadow",
-                        result.getError());
-            }
-        }*/
-    }
-
-    ;
 }
