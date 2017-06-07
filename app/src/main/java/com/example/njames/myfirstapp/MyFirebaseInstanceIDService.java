@@ -38,16 +38,10 @@ public class MyFirebaseInstanceIDService extends FirebaseInstanceIdService {
         Log.i(TAG, "Refreshed token: " + refreshedToken);
         SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
                 Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
-
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString(Constants.FIREBASE_TOKEN, refreshedToken);
-        editor.commit();
-
-        //sendRegistrationToServer(refreshedToken);
     }
 
     //private void sendRegistrationToServer(String token) {
-    //    DynamoIntentService.startActionAddEndpoint(getApplicationContext(),getDeviceId(),token);
+    //    AwsIntentService.startActionAddEndpoint(getApplicationContext(),getDeviceId(),token);
     //}
     public static String getDeviceId(ContentResolver content) {
         return Settings.Secure.getString(content, Settings.Secure.ANDROID_ID);

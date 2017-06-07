@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -25,6 +27,7 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 public class MainMenuActivity extends AppCompatActivity implements
         View.OnClickListener, GoogleApiClient.OnConnectionFailedListener {
@@ -36,25 +39,44 @@ public class MainMenuActivity extends AppCompatActivity implements
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            ArrayList<String> things =
-                    intent.getStringArrayListExtra(Constants.EXTRA_THING_LIST);
+            //ArrayList<String> things =
+            //        intent.getStringArrayListExtra(Constants.EXTRA_THING_LIST);
 
-            ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
-            list.setAdapter(thingAdapter);
+            //ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
+            //list.setAdapter(thingAdapter);
+            updateList();
             Log.i(TAG,"updating thing list");
         }
     };
     IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_GET_THINGS);
 
+    private void updateList() {
+        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
+                Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
+        Set<String> thingSet = sharedPref.getStringSet(Constants.THINGS_LIST,null);
+        ArrayList<String> things = new ArrayList<String>();
+        if (thingSet != null) {
+            for (String thing: thingSet) {
+                things.add(thing);
+            }
+        }
+        ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
+        list.setAdapter(thingAdapter);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_menu);
+
+        super.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         findViewById(R.id.device_setup_button).setOnClickListener(this);
+        findViewById(R.id.refresh_button).setOnClickListener(this);
         findViewById(R.id.monitor_button).setOnClickListener(this);
         findViewById(R.id.sign_out_button).setOnClickListener(this);
-        list = (Spinner)findViewById(R.id.thing_list);
 
+        list = (Spinner)findViewById(R.id.thing_list);
+        updateList();
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -69,8 +91,6 @@ public class MainMenuActivity extends AppCompatActivity implements
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
-
-        DynamoIntentService.startActionAddEndpoint(getApplicationContext());
     }
 
     @Override
@@ -102,7 +122,9 @@ public class MainMenuActivity extends AppCompatActivity implements
             case R.id.device_setup_button:
                 Intent setupActivity = new Intent(this, ThingSetupActivity.class);
                 startActivity(setupActivity);
-
+                break;
+            case R.id.refresh_button:
+                AwsIntentService.startActionAddEndpoint(getApplicationContext());
                 break;
             case R.id.monitor_button:
                 String thing = (String) list.getSelectedItem();
@@ -129,6 +151,7 @@ public class MainMenuActivity extends AppCompatActivity implements
     }
     @Override
     public void finish() {
+        Log.i(TAG,"finished");
         CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
                 getApplicationContext(),    /* get the context for the application */
                 "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7",    /* Identity Pool ID */
@@ -137,7 +160,7 @@ public class MainMenuActivity extends AppCompatActivity implements
         credentialsProvider.clear();
         Intent intent = new Intent();
         setResult(RESULT_CANCELED, intent);
-        Log.i(TAG,"finished");
+
         super.finish();
     }
 
@@ -157,10 +180,7 @@ public class MainMenuActivity extends AppCompatActivity implements
 
     @Override
     protected void onPause() {
-        if (mReceiver != null) {
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
-        }
-        mReceiver = null;
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         super.onPause();
     }
 

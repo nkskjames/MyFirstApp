@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.IBinder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
@@ -15,6 +16,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.Map;
@@ -34,14 +36,35 @@ public class MyMessagingService extends FirebaseMessagingService {
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message: " + remoteMessage.getData());
             try {
-                Intent broadcast = new Intent();
                 //TODO: make sure message is formatted properly
-                broadcast.setAction(Constants.ACTION_RECEIVE_DATA);
-                for (String key: remoteMessage.getData().keySet()) {
-                    broadcast.putExtra(key,remoteMessage.getData().get(key));
+                String jsonStr = remoteMessage.getData().toString();
+                jsonStr = jsonStr.replace('=',':');
+                JSONObject json = new JSONObject(jsonStr);
+                JSONArray ta = json.getJSONArray("t");
+                JSONArray tda = json.getJSONArray("td");
+                JSONArray tla = json.getJSONArray("tl");
+                JSONArray tua = json.getJSONArray("tu");
+
+                int t[] = new int[3];
+                int tu[] = new int[3];
+                int tl[] = new int[3];
+                String td[] = new String[3];
+                for (int i=0;i<3;i++) {
+                    t[i] = ta.getInt(i);
+                    tu[i] = tua.getInt(i);
+                    tl[i] = tla.getInt(i);
+                    td[i] = tda.getString(i);
                 }
-                sendBroadcast(broadcast);
+                Intent intent = new Intent(Constants.ACTION_RECEIVE_DATA);
+                intent.putExtra("t",t);
+                intent.putExtra("td",td);
+                intent.putExtra("tu",tu);
+                intent.putExtra("tl",tl);
+                intent.putExtra("thingName",json.getString("thingName"));
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+
             } catch (Exception e) {
+                e.printStackTrace();
                 Log.e(TAG,e.getMessage());
             }
         }

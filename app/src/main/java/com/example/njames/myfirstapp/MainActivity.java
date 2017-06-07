@@ -1,18 +1,18 @@
 package com.example.njames.myfirstapp;
 
-import android.app.usage.ConfigurationStats;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
 import com.amazonaws.auth.IdentityChangedListener;
-import com.amazonaws.regions.Regions;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -24,9 +24,6 @@ import com.google.android.gms.common.api.OptionalPendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static android.content.ContentValues.TAG;
 
 public class MainActivity extends AppCompatActivity implements
@@ -36,6 +33,23 @@ public class MainActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
     private static final int RC_SIGN_IN = 9001;
     CognitoCachingCredentialsProvider credentialsProvider;
+    IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_AWS_LOGIN);
+    BroadcastReceiver mReceiver =  new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(Constants.ACTION_AWS_LOGIN)) {
+                Log.i(TAG,"AWS login done");
+                loginDone();
+            }
+
+        }
+    };
+
+
+    private void loginDone() {
+        Intent myNewActivity = new Intent(this, MainMenuActivity.class);
+        startActivity(myNewActivity);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,13 +76,15 @@ public class MainActivity extends AppCompatActivity implements
 
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
-
+        /*
         credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),    /* get the context for the application */
-                "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7",    /* Identity Pool ID */
-                Regions.US_WEST_2           /* Region for your identity pool--US_EAST_1 or EU_WEST_1*/
+                getApplicationContext(),
+                "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7",
+                Regions.US_WEST_2
         );
         credentialsProvider.registerIdentityChangedListener(this);
+
+        */
     }
 
 
@@ -77,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements
         super.onActivityResult(requestCode, resultCode, data);
 
         // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
+        Log.i(TAG,String.valueOf(requestCode));
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             handleSignInResult(result);
@@ -91,10 +108,10 @@ public class MainActivity extends AppCompatActivity implements
         if (result.isSuccess()) {
             // Signed in successfully, show authenticated UI.
             GoogleSignInAccount acct = result.getSignInAccount();
-            credentialsProvider.clear();
-            Map<String, String> logins = new HashMap<String, String>();
-            logins.put("accounts.google.com", acct.getIdToken());
-            credentialsProvider.setLogins(logins);
+            //credentialsProvider.clear();
+            //Map<String, String> logins = new HashMap<String, String>();
+            //logins.put("accounts.google.com", acct.getIdToken());
+            //credentialsProvider.setLogins(logins);
 
             SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPref.edit();
@@ -102,10 +119,7 @@ public class MainActivity extends AppCompatActivity implements
             editor.putString(Constants.LOGIN_TOKEN, acct.getIdToken());
             editor.commit();
 
-            //new RefreshCredentials().execute(credentialsProvider);
-            Intent myNewActivity = new Intent(this, MainMenuActivity.class);
-            startActivity(myNewActivity);
-
+            AwsIntentService.startActionAwsLogin(getApplicationContext());
         }
     }
 
@@ -178,22 +192,19 @@ public class MainActivity extends AppCompatActivity implements
 
         }
     }
-
-    private class RefreshCredentials extends AsyncTask<CognitoCachingCredentialsProvider, Void, Void> {
-        protected Void doInBackground(CognitoCachingCredentialsProvider... provider) {
-            /*
-            try {
-                FirebaseInstanceId.getInstance().deleteInstanceId();
-            } catch (Exception e) {
-
-            }
-            */
-            provider[0].refresh();
-            return null;
-        }
-
-        protected void onPostExecute() {
-
-        }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                mReceiver,
+                mIntentFilter);
     }
+
+
+    @Override
+    protected void onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        super.onPause();
+    }
+
 }

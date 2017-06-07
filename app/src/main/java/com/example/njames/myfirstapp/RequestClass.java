@@ -5,18 +5,27 @@ package com.example.njames.myfirstapp;
  */
 
 public class RequestClass {
-    public String td0;
-    public String td1;
-    public String td2;
-    public String thingName;
 
-    public RequestClass(String thingName,String label0,String label1,String label2) {
+    public String thingName;
+    public String token;
+    int cnt = 0;
+    public String[] td = new String[3];
+    Integer tu[] = new Integer[3];
+    Integer tl[] = new Integer[3];
+
+    public RequestClass(String thingName, String token) {
         this.thingName = thingName;
-        this.td0 = label0;
-        this.td1 = label1;
-        this.td2 = label2;
+        this.token = token;
+        cnt = 0;
     }
 
-    public RequestClass() {
+    public void add(String tdx, Integer tux, Integer tlx) {
+        if (cnt >=3) {
+            return;
+        }
+        td[cnt] = tdx;
+        tu[cnt] = tux;
+        tl[cnt] = tlx;
+        cnt++;
     }
 };
