@@ -91,37 +91,6 @@ public class AwsIntentService extends IntentService {
         credentialsProvider.setLogins(logins);
         return credentialsProvider;
     }
-    /*
-    private void handleActionAwsLogin() {
-        Log.i(TAG,"handleActionAwsLogin");
-        SharedPreferences sharedPref = this.getApplicationContext().getSharedPreferences(
-                Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
-
-        String loginAccount = sharedPref.getString(Constants.LOGIN_ACCOUNT,"");
-        String loginToken = sharedPref.getString(Constants.LOGIN_TOKEN,"");
-
-        if (loginAccount.isEmpty() || loginToken.isEmpty()) { return; }
-
-        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-                this.getApplicationContext(),
-                Constants.COGNITO_POOL_ID,
-                Regions.US_WEST_2
-        );
-        credentialsProvider.clear();
-        Map<String, String> logins = new HashMap<String, String>();
-        logins.put(loginAccount, loginToken);
-        credentialsProvider.setLogins(logins);
-        credentialsProvider.refresh();
-
-        Log.i(TAG,credentialsProvider.getCachedIdentityId());
-        Intent localIntent = new Intent(Constants.ACTION_AWS_LOGIN)
-                .putExtra(Constants.EXTRA_AWS_ID,credentialsProvider.getCachedIdentityId());
-        Log.i(TAG,FirebaseInstanceId.getInstance().getToken());
-        // Broadcasts the Intent to receivers in this app.
-        LocalBroadcastManager.getInstance(this).sendBroadcast(localIntent);
-    }
-    */
-
     private void handleActionAddEndpoint() {
         //AwsIntentService.resetToken(getApplicationContext());
         SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
@@ -134,16 +103,6 @@ public class AwsIntentService extends IntentService {
         String currentToken = FirebaseInstanceId.getInstance().getToken();
         Log.i(TAG,"Firebase token: "+currentToken);
         CognitoCachingCredentialsProvider credentialsProvider = AwsIntentService.getCredentialProvider(getApplicationContext());
-        /*
-        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),
-                Constants.COGNITO_POOL_ID,
-                Regions.US_WEST_2
-        );
-        Map<String, String> logins = new HashMap<String, String>();
-        logins.put(loginAccount, loginToken);
-        credentialsProvider.setLogins(logins);
-        */
         credentialsProvider.refresh();
 
         AmazonDynamoDBClient dynamodb = new AmazonDynamoDBClient(credentialsProvider);
@@ -178,28 +137,10 @@ public class AwsIntentService extends IntentService {
             Log.i(TAG,"Token has not changed");
         } else {
             String deviceId = MyFirebaseInstanceIDService.getDeviceId(getContentResolver());
-            Log.i(TAG, "Token has changed; Adding Endpoint");
-
-            HashMap<String, AttributeValue> attributes = new HashMap<String, AttributeValue>();
-
-            AttributeValue key = new AttributeValue();
-            key.setS(credentialsProvider.getIdentityId());
-            attributes.put("user_id", key);
-
-            AttributeValue dkey = new AttributeValue();
-            dkey.setS(deviceId);
-            attributes.put("device_id", dkey);
-
-            AttributeValue data = new AttributeValue();
-            data.setS(currentToken);
-            attributes.put("token", data);
-
-            AttributeValue tkey = new AttributeValue();
-            attributes.put("thing_id", tkey);
+            Log.i(TAG, "Token has changed; updating things");
 
             for (String thing : things) {
-                tkey.setS(thing);
-                dynamodb.putItem("CreateEndpointRequest", attributes);
+
             }
             editor.putString(Constants.FIREBASE_TOKEN, currentToken);
             editor.commit();
