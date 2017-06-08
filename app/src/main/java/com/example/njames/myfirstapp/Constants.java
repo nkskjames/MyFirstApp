@@ -10,6 +10,7 @@ public class Constants {
     public static final String ACTION_POST_FORM = "com.example.njames.myfirstapp.action.POST_FORM";
     public static final String ACTION_RECEIVE_DATA = "com.example.njames.myfirstapp.action.RECEIVE_DATA";
     public static final String ACTION_AWS_LOGIN = "com.example.njames.myfirstapp.action.AWS_LOGIN";
+    public static final String ACTION_SIGNUP_DONE = "com.example.njames.myfirstapp.action.SIGNUP_DONE";
     public static final String EXTRA_THING_ID = "com.example.njames.myfirstapp.extra.THING_ID";
     public static final String EXTRA_THING_LIST = "com.example.njames.myfirstapp.extra.THING_LIST";
     public static final String EXTRA_POST_RESPONSE = "com.example.njames.myfirstapp.extra.POST_RESPONSE";

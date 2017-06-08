@@ -74,6 +74,9 @@ public class ThingSetupActivity extends AppCompatActivity implements
                     finish();
                 }
             }
+            if (intent.getAction().equals(Constants.ACTION_SIGNUP_DONE)) {
+
+            }
             if (intent.getAction().equals(Constants.ACTION_POST_FORM)) {
                 String response = intent.getStringExtra(Constants.EXTRA_POST_RESPONSE);
                 String thingName = intent.getStringExtra(Constants.EXTRA_POST_THINGNAME);
@@ -272,7 +275,6 @@ public class ThingSetupActivity extends AppCompatActivity implements
                                         .show();
                             }
                         }, 10000);
-
                     }
                 }
                 break;
@@ -297,7 +299,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
                         .add("ip", "")
                         .add("gw", "")
                         .add("netmask", "")
-                        //.add("token", FirebaseInstanceId.getInstance().getToken())
+                        .add("token", FirebaseInstanceId.getInstance().getToken())
                         .build();
                 Request request = new Request.Builder()
                         .url(thingUrl)

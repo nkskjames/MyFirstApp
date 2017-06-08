@@ -40,28 +40,36 @@ public class MyMessagingService extends FirebaseMessagingService {
                 String jsonStr = remoteMessage.getData().toString();
                 jsonStr = jsonStr.replace('=',':');
                 JSONObject json = new JSONObject(jsonStr);
-                JSONArray ta = json.getJSONArray("t");
-                JSONArray tda = json.getJSONArray("td");
-                JSONArray tla = json.getJSONArray("tl");
-                JSONArray tua = json.getJSONArray("tu");
+                String command = json.getString("command");
+                if (command.equals("signup_done")) {
+                    Intent intent = new Intent(Constants.ACTION_SIGNUP_DONE);
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+                } else if(command.equals("data")){
+                    JSONArray ta = json.getJSONArray("t");
+                    JSONArray tda = json.getJSONArray("td");
+                    JSONArray tla = json.getJSONArray("tl");
+                    JSONArray tua = json.getJSONArray("tu");
 
-                int t[] = new int[3];
-                int tu[] = new int[3];
-                int tl[] = new int[3];
-                String td[] = new String[3];
-                for (int i=0;i<3;i++) {
-                    t[i] = ta.getInt(i);
-                    tu[i] = tua.getInt(i);
-                    tl[i] = tla.getInt(i);
-                    td[i] = tda.getString(i);
+                    int t[] = new int[3];
+                    int tu[] = new int[3];
+                    int tl[] = new int[3];
+                    String td[] = new String[3];
+                    for (int i = 0; i < 3; i++) {
+                        t[i] = ta.getInt(i);
+                        tu[i] = tua.getInt(i);
+                        tl[i] = tla.getInt(i);
+                        td[i] = tda.getString(i);
+                    }
+                    Intent intent = new Intent(Constants.ACTION_RECEIVE_DATA);
+                    intent.putExtra("t", t);
+                    intent.putExtra("td", td);
+                    intent.putExtra("tu", tu);
+                    intent.putExtra("tl", tl);
+                    intent.putExtra("thingName", json.getString("thingName"));
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+                } else {
+                    Log.e(TAG,"Unknown command: "+command);
                 }
-                Intent intent = new Intent(Constants.ACTION_RECEIVE_DATA);
-                intent.putExtra("t",t);
-                intent.putExtra("td",td);
-                intent.putExtra("tu",tu);
-                intent.putExtra("tl",tl);
-                intent.putExtra("thingName",json.getString("thingName"));
-                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
 
             } catch (Exception e) {
                 e.printStackTrace();
