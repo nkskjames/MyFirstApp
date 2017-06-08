@@ -10,6 +10,8 @@ import android.util.Log;
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBQueryExpression;
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaFunctionException;
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
@@ -140,7 +142,17 @@ public class AwsIntentService extends IntentService {
             Log.i(TAG, "Token has changed; updating things");
 
             for (String thing : things) {
+                Log.i(TAG,"Update thing: "+thing);
+                RequestClass request = new RequestClass(thing, currentToken);
+                LambdaInvokerFactory factory = new LambdaInvokerFactory(this.getApplicationContext(),
+                        Regions.US_WEST_2, credentialsProvider);
 
+                final UpdateThingDescInterface myInterface = factory.build(UpdateThingDescInterface.class);
+                try {
+                    myInterface.UpdateThingDesc(request);
+                } catch (LambdaFunctionException lfe) {
+                    Log.e(TAG, "Failed to invoke echo", lfe);
+                }
             }
             editor.putString(Constants.FIREBASE_TOKEN, currentToken);
             editor.commit();

@@ -8,16 +8,6 @@
     tools:layout_editor_absoluteY="81dp"
     tools:layout_editor_absoluteX="0dp">
 
-    <Button
-        android:id="@+id/refresh_button"
-        android:layout_width="100dp"
-        android:layout_height="60dp"
-        android:text="Refresh"
-        app:layout_constraintRight_toLeftOf="@+id/units"
-        app:layout_constraintLeft_toRightOf="@+id/update_label_button"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="8dp" />
-
     <android.support.constraint.ConstraintLayout
         android:id="@+id/t0"
         android:layout_width="367dp"
@@ -81,7 +71,7 @@
             android:layout_weight="1"
             android:ems="10"
             android:inputType="textPersonName"
-            android:text="No Data"
+            android:text="Temp 1"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -148,7 +138,7 @@
             android:layout_weight="1"
             android:ems="10"
             android:inputType="textPersonName"
-            android:text="No Data"
+            android:text="Temp 2"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -170,19 +160,19 @@
         android:textOn="F"
         tools:checked="false"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/refresh_button"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="23dp"
+        android:layout_marginRight="27dp" />
 
     <Button
         android:id="@+id/update_label_button"
         android:layout_width="120dp"
         android:layout_height="60dp"
         android:text="Update Labels"
-        app:layout_constraintRight_toLeftOf="@+id/refresh_button"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="16dp"
+        android:layout_marginLeft="28dp" />
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/t2"
@@ -244,7 +234,7 @@
             android:layout_weight="1"
             android:ems="10"
             android:inputType="textPersonName"
-            android:text="No Data"
+            android:text="Temp 3"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

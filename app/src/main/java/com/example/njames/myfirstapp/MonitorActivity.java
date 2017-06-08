@@ -69,7 +69,6 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
 
         thingName = this.getIntent().getStringExtra(Constants.EXTRA_THING_ID);
         findViewById(R.id.update_label_button).setOnClickListener(this);
-        findViewById(R.id.refresh_button).setOnClickListener(this);
         findViewById(R.id.units).setOnClickListener(this);
         Switch unitView = (Switch) findViewById(R.id.units);
         unitView.setOnCheckedChangeListener(this);
@@ -119,8 +118,10 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
         RequestClass request = new RequestClass(thingName, FirebaseInstanceId.getInstance().getToken());
         for (View view : views) {
             String ts = ((EditText)view.findViewById(R.id.tu)).getText().toString();
+            if (ts.isEmpty()) { ts = "1000"; }
             Integer tu = Integer.parseInt(ts);
             ts = ((EditText)view.findViewById(R.id.tl)).getText().toString();
+            if (ts.isEmpty()) { ts = "0"; }
             Integer tl = Integer.parseInt(ts);
             String td = ((EditText)view.findViewById(R.id.td)).getText().toString();
             request.add(td,tu,tl);

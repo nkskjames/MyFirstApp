@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -23,6 +24,10 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaFunctionException;
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory;
+import com.amazonaws.regions.Regions;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.squareup.okhttp.FormEncodingBuilder;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
@@ -60,6 +65,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            Log.i(TAG, "receiver action: "+intent.getAction());
             if (intent.getAction().equals(Constants.ACTION_RECEIVE_DATA)) {
                 String msgThingName = intent.getStringExtra("thingname");
                 Log.i(TAG,"message received: "+msgThingName);
@@ -96,34 +102,46 @@ public class ThingSetupActivity extends AppCompatActivity implements
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
+
+    private void checkThingConnected() {
+        if (configState == CONFIG_STATE_ENDPOINT_REQUEST_SENT) {
+            Log.i(TAG,"never recieved request");
+            configState = CONFIG_STATE_IDLE;
+            Toast.makeText(getApplicationContext(),
+                    "Never received response from device; perhaps password is wrong", Toast.LENGTH_LONG)
+                    .show();
+        } else {
+            finish();
+        }
+    }
+
     private void onWifiConnectInternet() {
         Log.i(TAG,"onWifiConnectInternet");
+
         if (configState == CONFIG_STATE_THING_ONWIFI) {
+            // Step 3:
             Log.i(TAG,"onWifiConnectInternet: Config onwifi");
             AwsIntentService.resetToken(getApplicationContext());
-            AwsIntentService.startActionAddEndpoint(getApplicationContext());
-
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    if (configState == CONFIG_STATE_ENDPOINT_REQUEST_SENT) {
-                        Log.i(TAG,"never recieved request");
-                        configState = CONFIG_STATE_IDLE;
-                        Toast.makeText(getApplicationContext(),
-                                "Never received response from device; perhaps password is wrong", Toast.LENGTH_LONG)
-                                .show();
-                    } else {
-                        finish();
-                    }
+                    AwsIntentService.startActionAddEndpoint(getApplicationContext());
                 }
             }, 30000);
-            configState = CONFIG_STATE_ENDPOINT_REQUEST_SENT;
+            //handler.postDelayed(new Runnable() {
+            //    @Override
+            //    public void run() {
+            //        checkThingConnected();
+            //    }
+            //}, 30000);
+            //configState = CONFIG_STATE_ENDPOINT_REQUEST_SENT;
         }
     }
     //step 1
     private void onWifiConnectThing() {
         Log.i(TAG,"onWifiConnectThing");
         if (configState == CONFIG_STATE_IDLE) {
+            handler.removeCallbacksAndMessages(null);
             doSetup();
         }
     }
@@ -149,6 +167,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
         }
     }
     private void reconnectToInternet() {
+        Log.i(TAG, "reconnectToInternet");
         mWifiManager.disconnect();
         mWifiManager.disableNetwork(netId);
         Log.i(TAG, "Restoring network");
@@ -159,6 +178,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     //Need to do this because when wifi doesn't have internet access
     //  Android will use cellular, so we have to find wifi and force to use it.
     private void doSetup() {
+        Log.i(TAG, "doSetup");
         Network nets[] = conn.getAllNetworks();
         for (Network n : nets) {
             NetworkInfo ninfo = conn.getNetworkInfo(n);
@@ -228,15 +248,32 @@ public class ThingSetupActivity extends AppCompatActivity implements
                 hideKeyboard();
                 if (configState == CONFIG_STATE_IDLE) {
                     retryCount = 0;
-
+                    Log.i(TAG,"Connecting to: "+thingSSID);
                     WifiConfiguration config = new WifiConfiguration();
                     config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
                     config.SSID = "\"" + thingSSID + "\"";
 
                     netId = mWifiManager.addNetwork(config);
-                    mWifiManager.disconnect();
-                    mWifiManager.enableNetwork(netId, true);
-                    mWifiManager.reconnect();
+                    if (netId == -1) {
+                        Toast.makeText(getApplicationContext(),
+                                "BBQTemp Wifi not found", Toast.LENGTH_LONG)
+                                .show();
+
+                    } else {
+                        mWifiManager.disconnect();
+                        mWifiManager.enableNetwork(netId, true);
+                        mWifiManager.reconnect();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                Log.i(TAG,"never connected");
+                                Toast.makeText(getApplicationContext(),
+                                        "Unable to connect to device.  Is it on?", Toast.LENGTH_LONG)
+                                        .show();
+                            }
+                        }, 10000);
+
+                    }
                 }
                 break;
         }
@@ -260,6 +297,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
                         .add("ip", "")
                         .add("gw", "")
                         .add("netmask", "")
+                        //.add("token", FirebaseInstanceId.getInstance().getToken())
                         .build();
                 Request request = new Request.Builder()
                         .url(thingUrl)
