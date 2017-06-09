@@ -41,7 +41,8 @@ public class MyMessagingService extends FirebaseMessagingService {
                 jsonStr = jsonStr.replace('=',':');
                 JSONObject json = new JSONObject(jsonStr);
                 String command = json.getString("command");
-                if (command.equals("signup_done")) {
+                Log.i(TAG,"Command: "+command);
+                if (command.equals("subscribed")) {
                     Intent intent = new Intent(Constants.ACTION_SIGNUP_DONE);
                     LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
                 } else if(command.equals("data")){
