@@ -1,5 +1,10 @@
 package com.example.njames.myfirstapp;
 
+import android.content.Context;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+
 /**
  * Created by njames on 5/30/2017.
  */
@@ -22,5 +27,13 @@ public class Constants {
     public static final String FIREBASE_TOKEN = "com.example.njames.myfirstapp.preferences.AUTH.FIREBASE_TOKEN";
     public static final String THINGS_LIST = "com.example.njames.myfirstapp.preferences.AUTH.THINGS_LIST";
     public static final String COGNITO_POOL_ID = "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7";
+
+    public static void hideKeyboard(AppCompatActivity app) {
+        View view = app.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)app.getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
 
 }
