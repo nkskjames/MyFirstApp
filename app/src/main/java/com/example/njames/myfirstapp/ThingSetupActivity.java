@@ -89,7 +89,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
             }
             if (intent.getAction().equals(Constants.ACTION_SIGNUP_DONE)) {
                 configState = ConfigState.CONFIG_STATE_RESPONSE_RECEIVED;
-                configStateManager(ConfigState.CONFIG_STATE_ANY);
+                configStateManager(configState);
             }
             if (intent.getAction().equals(Constants.ACTION_POST_FORM)) {
                 String response = intent.getStringExtra(Constants.EXTRA_POST_RESPONSE);
@@ -97,11 +97,13 @@ public class ThingSetupActivity extends AppCompatActivity implements
                 handleConfigResponse(response,thingName);
             }
             if (intent.getAction().equals(Constants.ACTION_RECEIVE_DATA)) {
-                String msgThingName = intent.getStringExtra("thingname");
-                if (thingName.equals(msgThingName)) {
-                    configState = ConfigState.CONFIG_STATE_DONE;
-                    configStateManager(configState);
-                    finish();
+                String msgThingName = intent.getStringExtra("thingName");
+                Log.i(TAG,msgThingName+","+thingName);
+                if (configState == ConfigState.CONFIG_STATE_RESPONSE_RECEIVED) {
+                    if (thingName.equals(msgThingName)) {
+                        configState = ConfigState.CONFIG_STATE_DONE;
+                        configStateManager(configState);
+                    }
                 }
             }
         }
@@ -140,12 +142,15 @@ public class ThingSetupActivity extends AppCompatActivity implements
     }
     //step 1
     private void onWifiConnectThing() {
-        Log.i(TAG,"onWifiConnectThing");
-        configState  = ConfigState.CONFIG_STATE_THING_CONNECTED;
-        configStateManager(ConfigState.CONFIG_STATE_ANY);
+        Log.i(TAG,"onWifiConnectThing: "+configState);
+        if (configState == ConfigState.CONFIG_STATE_THING_CONNECTING) {
+            configState = ConfigState.CONFIG_STATE_THING_CONNECTED;
+            configStateManager(ConfigState.CONFIG_STATE_ANY);
+        }
     }
     // step 2
     private void handleConfigResponse(String response, String thingName) {
+        this.thingName = thingName;
         Log.i(TAG,"Thing setup response: "+response+": "+thingName);
         if (response.equals("OK")) {
             configState = ConfigState.CONFIG_STATE_THING_OK;
@@ -169,10 +174,27 @@ public class ThingSetupActivity extends AppCompatActivity implements
     }
     private void reconnectToInternet() {
         Log.i(TAG, "reconnectToInternet");
-        mWifiManager.disconnect();
-        mWifiManager.disableNetwork(netId);
-        Log.i(TAG, "Restoring network");
-        mWifiManager.enableNetwork(netIdSave, true);
+        boolean rtn = mWifiManager.disconnect();
+        Log.i(TAG, "reconnectToInternet: "+rtn+","+netId+","+netIdSave);
+        if (!rtn) {
+            configState = ConfigState.CONFIG_STATE_FAIL;
+            setMessage(R.string.thing_reconnecting_error,true);
+            return;
+        }
+        rtn = mWifiManager.disableNetwork(netId);
+        Log.i(TAG, "Restoring network: "+rtn);
+        if (!rtn) {
+            configState = ConfigState.CONFIG_STATE_FAIL;
+            setMessage(R.string.thing_reconnecting_error,true);
+            return;
+        }
+
+        rtn = mWifiManager.enableNetwork(netIdSave, true);
+        if (!rtn) {
+            configState = ConfigState.CONFIG_STATE_FAIL;
+            setMessage(R.string.thing_reconnecting_error,true);
+            return;
+        }
         mWifiManager.reconnect();
     }
 
@@ -185,59 +207,74 @@ public class ThingSetupActivity extends AppCompatActivity implements
         switch(configState) {
             case CONFIG_STATE_IDLE:
                 configState = ConfigState.CONFIG_STATE_THING_CONNECTING;
+                setMessage(R.string.thing_connecting,false);
                 connectToThing();
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        Log.i(TAG,"never connected");
-                        Toast.makeText(getApplicationContext(),
-                                "Unable to connect to device.  Is it on?", Toast.LENGTH_LONG)
-                                .show();
+                        setMessage(R.string.thing_not_connected,false);
+                        configState = ConfigState.CONFIG_STATE_FAIL;
                     }
                 }, 10000);
                 break;
             case CONFIG_STATE_THING_CONNECTED:
                 handler.removeCallbacksAndMessages(null);
                 configState = ConfigState.CONFIG_STATE_THING_SETUP;
+                setMessage(R.string.thing_configuring,false);
                 doSetup();
                 break;
             case CONFIG_STATE_THING_OK:
                 configState = ConfigState.CONFIG_STATE_RECONNECT;
+                setMessage(R.string.thing_reconnecting,false);
                 reconnectToInternet();
                 break;
             case CONFIG_STATE_RECONNECT:
+                setMessage(R.string.thing_waiting_response,false);
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        Log.i(TAG,"Thing never responded");
-                        Toast.makeText(getApplicationContext(),
-                                "Thing never responded", Toast.LENGTH_LONG)
-                                .show();
+                        setMessage(R.string.thing_never_responded,false);
                         configState = ConfigState.CONFIG_STATE_FAIL;
                     }
                 }, 30000);
                 break;
             case CONFIG_STATE_RESPONSE_RECEIVED:
+                setMessage(R.string.thing_response_received,false);
                 handler.removeCallbacksAndMessages(null);
                 AwsIntentService.resetToken(getApplicationContext());
                 AwsIntentService.startActionAddEndpoint(getApplicationContext());
                 break;
-
+            case CONFIG_STATE_DONE:
+                setMessage(R.string.thing_setup_complete,false);
+                Intent monitorActivity = new Intent(this, MonitorActivity.class);
+                monitorActivity.putExtra(Constants.EXTRA_THING_ID,thingName);
+                startActivity(monitorActivity);
+                break;
         }
+    }
+    private void setMessage(int msgid, boolean error) {
+        TextView messages = (TextView) findViewById(R.id.messages);
+        messages.setText(getString(msgid));
+        if (error) {
+            Log.e(TAG, getString(msgid));
+        } else {
+            Log.i(TAG, getString(msgid));
+        }
+    }
+    private void setMessage(String msg) {
+        TextView messages = (TextView) findViewById(R.id.messages);
+        messages.setText(msg);
+        Log.i(TAG, msg);
     }
     private void connectToThing() {
         retryCount = 0;
-        Log.i(TAG,"Connecting to: "+thingSSID);
         WifiConfiguration config = new WifiConfiguration();
         config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
         config.SSID = "\"" + thingSSID + "\"";
 
         netId = mWifiManager.addNetwork(config);
         if (netId == -1) {
-            Toast.makeText(getApplicationContext(),
-                    "BBQTemp Wifi not found", Toast.LENGTH_LONG)
-                    .show();
-
+            setMessage(R.string.thing_not_connected,false);
         } else {
             mWifiManager.disconnect();
             mWifiManager.enableNetwork(netId, true);
@@ -249,17 +286,19 @@ public class ThingSetupActivity extends AppCompatActivity implements
     //Need to do this because when wifi doesn't have internet access
     //  Android will use cellular, so we have to find wifi and force to use it.
     private void doSetup() {
-        Log.i(TAG, "doSetup");
         Network nets[] = conn.getAllNetworks();
         for (Network n : nets) {
             NetworkInfo ninfo = conn.getNetworkInfo(n);
-            if (ninfo.getType() == ConnectivityManager.TYPE_WIFI) {
-                TextView ssidPassword = (TextView) findViewById(R.id.password);
-                new ConfigThing().execute(
-                        n,
-                        ssidPassword.getText().toString(),
-                        AwsIntentService.getCredentialProvider(getApplicationContext()).getCachedIdentityId());
+            if (ninfo != null) {
+                if (ninfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                    TextView ssidPassword = (TextView) findViewById(R.id.password);
+                    Log.i(TAG,"WIFI Found, running setup: "+ninfo.getExtraInfo());
+                    new ConfigThing().execute(
+                            n,
+                            ssidPassword.getText().toString(),
+                            AwsIntentService.getCredentialProvider(getApplicationContext()).getCachedIdentityId());
 
+                }
             }
         }
     }
@@ -269,6 +308,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
         switch (v.getId()) {
             case R.id.connect_button:
                 hideKeyboard();
+                configState = ConfigState.CONFIG_STATE_IDLE;
                 configStateManager(ConfigState.CONFIG_STATE_ANY);
                 break;
         }
@@ -311,11 +351,13 @@ public class ThingSetupActivity extends AppCompatActivity implements
                 rtn = "CONNECTION_ERROR";
             }
             conn.bindProcessToNetwork(null);
+
             Intent localIntent = new Intent(Constants.ACTION_POST_FORM)
                     .putExtra(Constants.EXTRA_POST_RESPONSE, rtn)
                     .putExtra(Constants.EXTRA_POST_THINGNAME, thingName );
 
             // Broadcasts the Intent to receivers in this app.
+            Log.i(TAG,">>>>>>>>>>>>>>>> broadcasting POST_FORM");
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(localIntent);
             return null;
         }
@@ -328,9 +370,11 @@ public class ThingSetupActivity extends AppCompatActivity implements
         super.onResume();
         Log.i(TAG, "OnResume");
         registerReceiver(mReceiver, mFilter);
-        registerReceiver(mReceiver, mFilter3);
+
         LocalBroadcastManager.getInstance(getApplicationContext())
                 .registerReceiver(mReceiver, mFilter2);
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .registerReceiver(mReceiver, mFilter3);
         LocalBroadcastManager.getInstance(getApplicationContext())
                 .registerReceiver(mReceiver, mFilter4);
 

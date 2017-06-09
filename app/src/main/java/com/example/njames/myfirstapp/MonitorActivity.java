@@ -88,29 +88,7 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
             i++;
         }
     }
-    private void refreshView() {
-        credentialsProvider = AwsIntentService.getCredentialProvider(getApplicationContext());
-        LambdaInvokerFactory factory = new LambdaInvokerFactory(this.getApplicationContext(),
-                Regions.US_WEST_2, credentialsProvider);
 
-        RefreshClass refresh = new RefreshClass(thingName,1);
-        final RefreshThingInterface myInterface = factory.build(RefreshThingInterface.class);
-
-        new AsyncTask<RefreshClass, Void, Void>() {
-            @Override
-            protected Void doInBackground(RefreshClass... params) {
-                // invoke "echo" method. In case it fails, it will throw a
-                // LambdaFunctionException.
-                try {
-                    myInterface.RefreshThing(params[0]);
-                    return null;
-                } catch (LambdaFunctionException lfe) {
-                    Log.e("Tag", "Failed to invoke echo", lfe);
-                    return null;
-                }
-            }
-        }.execute(refresh);
-    }
     private void updateLabels() {
         Log.i(TAG, "Updating labels");
 
@@ -154,9 +132,6 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
             case R.id.update_label_button:
                 updateLabels();
                 hideKeyboard();
-                break;
-            case R.id.refresh_button:
-                refreshView();
                 break;
         }
     }
