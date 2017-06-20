@@ -4,7 +4,7 @@ package com.example.njames.myfirstapp;
  * Created by njames on 5/29/2017.
  */
 
-public class RequestClass {
+public class RequestClass  {
 
     public String thingName;
     public String token;

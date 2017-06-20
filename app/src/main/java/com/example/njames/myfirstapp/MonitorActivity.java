@@ -89,49 +89,29 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
         }
     }
 
-    private void updateLabels() {
-        Log.i(TAG, "Updating labels");
-
-        credentialsProvider = AwsIntentService.getCredentialProvider(getApplicationContext());
-        RequestClass request = new RequestClass(thingName, FirebaseInstanceId.getInstance().getToken());
-        for (View view : views) {
-            String ts = ((EditText)view.findViewById(R.id.tu)).getText().toString();
-            if (ts.isEmpty()) { ts = "1000"; }
-            Integer tu = Integer.parseInt(ts);
-            ts = ((EditText)view.findViewById(R.id.tl)).getText().toString();
-            if (ts.isEmpty()) { ts = "0"; }
-            Integer tl = Integer.parseInt(ts);
-            String td = ((EditText)view.findViewById(R.id.td)).getText().toString();
-            request.add(td,tu,tl);
-        }
-
-        LambdaInvokerFactory factory = new LambdaInvokerFactory(this.getApplicationContext(),
-                Regions.US_WEST_2, credentialsProvider);
-
-        final UpdateThingDescInterface myInterface = factory.build(UpdateThingDescInterface.class);
-
-        new AsyncTask<RequestClass, Void, Void>() {
-            @Override
-            protected Void doInBackground(RequestClass... params) {
-                // invoke "echo" method. In case it fails, it will throw a
-                // LambdaFunctionException.
-                try {
-                    myInterface.UpdateThingDesc(params[0]);
-                    return null;
-                } catch (LambdaFunctionException lfe) {
-                    Log.e("Tag", "Failed to invoke echo", lfe);
-                    return null;
-                }
-            }
-        }.execute(request);
-    }
-
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.update_label_button:
-                updateLabels();
-                hideKeyboard();
+                int i = 0;
+                Intent labelsActivity = new Intent(this, UpdateLabelsActivity.class);
+                ArrayList<String> tus = new ArrayList<>();
+                ArrayList<String> tls = new ArrayList<>();
+                ArrayList<String> tds = new ArrayList<>();
+                for (View view : views) {
+                    String tu = ((EditText)view.findViewById(R.id.tu)).getText().toString();
+                    String tl = ((EditText)view.findViewById(R.id.tl)).getText().toString();
+                    String td = ((EditText)view.findViewById(R.id.td)).getText().toString();
+                    tus.add(tu);
+                    tls.add(tl);
+                    tds.add(td);
+                }
+
+                labelsActivity.putExtra(Constants.EXTRA_THING_ID, thingName);
+                labelsActivity.putExtra(Constants.EXTRA_THRESHOLDS_UPPER,tus);
+                labelsActivity.putExtra(Constants.EXTRA_THRESHOLDS_LOWER,tls);
+                labelsActivity.putExtra(Constants.EXTRA_LABELS,tds);
+                startActivity(labelsActivity);
                 break;
         }
     }
@@ -169,12 +149,5 @@ public class MonitorActivity extends AppCompatActivity implements View.OnClickLi
         }
         Integer integer = Integer.valueOf((int) Math.round(tmpd));
         return String.valueOf(integer)+prefix;
-    }
-    private void hideKeyboard() {
-        View view = this.getCurrentFocus();
-        if (view != null) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
     }
 }

@@ -41,7 +41,7 @@ public class MyFirebaseInstanceIDService extends FirebaseInstanceIdService {
     }
 
     //private void sendRegistrationToServer(String token) {
-    //    AwsIntentService.startActionAddEndpoint(getApplicationContext(),getDeviceId(),token);
+    //    FirebaseIntentService.startActionAddEndpoint(getApplicationContext(),getDeviceId(),token);
     //}
     public static String getDeviceId(ContentResolver content) {
         return Settings.Secure.getString(content, Settings.Secure.ANDROID_ID);

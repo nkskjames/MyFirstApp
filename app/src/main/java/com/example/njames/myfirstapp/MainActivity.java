@@ -1,12 +1,8 @@
 package com.example.njames.myfirstapp;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v4.content.LocalBroadcastManager;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -20,9 +16,13 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.OptionalPendingResult;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import static android.content.ContentValues.TAG;
 
@@ -33,6 +33,9 @@ public class MainActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
     private static final int RC_SIGN_IN = 9001;
     CognitoCachingCredentialsProvider credentialsProvider;
+    private FirebaseAuth mAuth;
+
+/*
     IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_AWS_LOGIN);
     BroadcastReceiver mReceiver =  new BroadcastReceiver() {
         @Override
@@ -44,9 +47,11 @@ public class MainActivity extends AppCompatActivity implements
 
         }
     };
-
+*/
 
     private void loginDone() {
+        Log.i(TAG,"Firebase login done: "+mAuth.getCurrentUser().getDisplayName());
+        Log.i(TAG,mAuth.getCurrentUser().getUid());
         Intent myNewActivity = new Intent(this, MainMenuActivity.class);
         startActivity(myNewActivity);
     }
@@ -58,6 +63,8 @@ public class MainActivity extends AppCompatActivity implements
 
         // Button listeners
         findViewById(R.id.sign_in_button).setOnClickListener(this);
+
+        mAuth = FirebaseAuth.getInstance();
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
@@ -76,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements
 
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
+
         /*
         credentialsProvider = new CognitoCachingCredentialsProvider(
                 getApplicationContext(),
@@ -108,25 +116,24 @@ public class MainActivity extends AppCompatActivity implements
         if (result.isSuccess()) {
             // Signed in successfully, show authenticated UI.
             GoogleSignInAccount acct = result.getSignInAccount();
-            //credentialsProvider.clear();
-            //Map<String, String> logins = new HashMap<String, String>();
-            //logins.put("accounts.google.com", acct.getIdToken());
-            //credentialsProvider.setLogins(logins);
+            firebaseAuthWithGoogle(acct);
 
-            SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPref.edit();
-            editor.putString(Constants.LOGIN_ACCOUNT, "accounts.google.com");
-            editor.putString(Constants.LOGIN_TOKEN, acct.getIdToken());
-            editor.commit();
+            //SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
+            //SharedPreferences.Editor editor = sharedPref.edit();
+            //editor.putString(Constants.LOGIN_ACCOUNT, "accounts.google.com");
+            //editor.putString(Constants.LOGIN_TOKEN, acct.getIdToken());
+            //editor.commit();
 
-            AwsIntentService.startActionAwsLogin(getApplicationContext());
+            //FirebaseIntentService.startActionAwsLogin(getApplicationContext());
         }
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) { loginDone(); }
+        /*
         OptionalPendingResult<GoogleSignInResult> opr = Auth.GoogleSignInApi.silentSignIn(mGoogleApiClient);
         if (opr.isDone()) {
             // If the user's cached credentials are valid, the OptionalPendingResult will be "done"
@@ -146,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements
                 }
             });
         }
+        */
     }
     //findViewById(R.id.sign_in_button).setVisibility(View.GONE);
 
@@ -155,8 +163,8 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void signOut() {
+        /*
         credentialsProvider.clear();
-
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
                 new ResultCallback<Status>() {
                     @Override
@@ -164,6 +172,8 @@ public class MainActivity extends AppCompatActivity implements
                         //updateUI(false);
                     }
                 });
+                */
+        mAuth.signOut();
     }
 
     @Override
@@ -195,16 +205,44 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-                mReceiver,
-                mIntentFilter);
+        //LocalBroadcastManager.getInstance(this).registerReceiver(
+         //       mReceiver,
+         //       mIntentFilter);
     }
 
 
     @Override
     protected void onPause() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        //LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         super.onPause();
     }
 
+
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        Log.i(TAG,"Provider: "+credential.getProvider());
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d(TAG, "signInWithCredential:success");
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) { loginDone(); }
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w(TAG, "signInWithCredential:failure", task.getException());
+                            //Toast.makeText(this, "Authentication failed.",
+                            //        Toast.LENGTH_SHORT).show();
+                            //updateUI(null);
+                        }
+
+                        // ...
+                    }
+                });
+    }
 }

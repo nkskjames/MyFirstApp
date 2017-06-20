@@ -11,4 +11,7 @@ public interface UpdateThingDescInterface {
     @LambdaFunction
     void UpdateThingDesc(RequestClass request);
 
+    @LambdaFunction
+    void UpdateThingDesc(UpdateToken request);
+
 }

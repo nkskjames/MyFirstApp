@@ -4,11 +4,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -24,9 +24,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.amazonaws.mobileconnectors.lambdainvoker.LambdaFunctionException;
-import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory;
-import com.amazonaws.regions.Regions;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.squareup.okhttp.FormEncodingBuilder;
 import com.squareup.okhttp.OkHttpClient;
@@ -53,6 +50,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     private int netIdSave = -1;
     private int netId = -1;
     private static final String thingUrl = "http://192.168.4.1/ssidSelected";
+
     public enum ConfigState {
         CONFIG_STATE_IDLE,
         CONFIG_STATE_THING_CONNECTING,
@@ -65,6 +63,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
         CONFIG_STATE_FAIL,
         CONFIG_STATE_ANY,
     }
+
     private ConfigState configState = ConfigState.CONFIG_STATE_IDLE;
     private String thingName = "";
     private ConnectivityManager conn;
@@ -73,7 +72,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.i(TAG, "receiver action: "+intent.getAction());
+            Log.i(TAG, "receiver action: " + intent.getAction());
             if (intent.getAction().equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                 NetworkInfo info = intent.getParcelableExtra(EXTRA_NETWORK_INFO);
                 WifiInfo wifi = intent.getParcelableExtra(EXTRA_WIFI_INFO);
@@ -82,24 +81,20 @@ public class ThingSetupActivity extends AppCompatActivity implements
                     connectSSID = connectSSID.substring(1, connectSSID.length() - 1);
                     if (connectSSID.equals(currentSSID)) {
                         onWifiConnectInternet();
-                    } else if(connectSSID.equals(thingSSID)) {
+                    } else if (connectSSID.equals(thingSSID)) {
                         onWifiConnectThing();
                     }
                 }
             }
-            if (intent.getAction().equals(Constants.ACTION_SIGNUP_DONE)) {
-                configState = ConfigState.CONFIG_STATE_RESPONSE_RECEIVED;
-                configStateManager(configState);
-            }
             if (intent.getAction().equals(Constants.ACTION_POST_FORM)) {
                 String response = intent.getStringExtra(Constants.EXTRA_POST_RESPONSE);
                 String thingName = intent.getStringExtra(Constants.EXTRA_POST_THINGNAME);
-                handleConfigResponse(response,thingName);
+                handleConfigResponse(response, thingName);
             }
             if (intent.getAction().equals(Constants.ACTION_RECEIVE_DATA)) {
-                String msgThingName = intent.getStringExtra("thingName");
-                Log.i(TAG,msgThingName+","+thingName);
-                if (configState == ConfigState.CONFIG_STATE_RESPONSE_RECEIVED) {
+                String msgThingName = intent.getStringExtra("thing_id");
+                Log.i(TAG, msgThingName + "," + thingName);
+                if (configState == ConfigState.CONFIG_STATE_RECONNECT) {
                     if (thingName.equals(msgThingName)) {
                         configState = ConfigState.CONFIG_STATE_DONE;
                         configStateManager(configState);
@@ -130,28 +125,30 @@ public class ThingSetupActivity extends AppCompatActivity implements
             ssidText.setText(currentSSID);
             netIdSave = winfo.getNetworkId();
             b.setVisibility(View.VISIBLE);
+            setMessage(R.string.wifi_prompt_password, false);
         } else {
-            Toast.makeText(getApplicationContext(),
-                    "Must be connected to WiFi", Toast.LENGTH_LONG)
-                    .show();
+            setMessage(R.string.wifi_not_connected, true);
         }
     }
+
     private void onWifiConnectInternet() {
-        Log.i(TAG,"onWifiConnectInternet");
+        Log.i(TAG, "onWifiConnectInternet");
         configStateManager(ConfigState.CONFIG_STATE_RECONNECT);
     }
+
     //step 1
     private void onWifiConnectThing() {
-        Log.i(TAG,"onWifiConnectThing: "+configState);
+        Log.i(TAG, "onWifiConnectThing: " + configState);
         if (configState == ConfigState.CONFIG_STATE_THING_CONNECTING) {
             configState = ConfigState.CONFIG_STATE_THING_CONNECTED;
             configStateManager(ConfigState.CONFIG_STATE_ANY);
         }
     }
+
     // step 2
     private void handleConfigResponse(String response, String thingName) {
         this.thingName = thingName;
-        Log.i(TAG,"Thing setup response: "+response+": "+thingName);
+        Log.i(TAG, "Thing setup response: " + response + ": " + thingName);
         if (response.equals("OK")) {
             configState = ConfigState.CONFIG_STATE_THING_OK;
             configStateManager(ConfigState.CONFIG_STATE_ANY);
@@ -172,27 +169,28 @@ public class ThingSetupActivity extends AppCompatActivity implements
             }
         }
     }
+
     private void reconnectToInternet() {
         Log.i(TAG, "reconnectToInternet");
         boolean rtn = mWifiManager.disconnect();
-        Log.i(TAG, "reconnectToInternet: "+rtn+","+netId+","+netIdSave);
+        Log.i(TAG, "reconnectToInternet: " + rtn + "," + netId + "," + netIdSave);
         if (!rtn) {
             configState = ConfigState.CONFIG_STATE_FAIL;
-            setMessage(R.string.thing_reconnecting_error,true);
+            setMessage(R.string.thing_reconnecting_error, true);
             return;
         }
         rtn = mWifiManager.disableNetwork(netId);
-        Log.i(TAG, "Restoring network: "+rtn);
+        Log.i(TAG, "Restoring network: " + rtn);
         if (!rtn) {
             configState = ConfigState.CONFIG_STATE_FAIL;
-            setMessage(R.string.thing_reconnecting_error,true);
+            setMessage(R.string.thing_reconnecting_error, true);
             return;
         }
 
         rtn = mWifiManager.enableNetwork(netIdSave, true);
         if (!rtn) {
             configState = ConfigState.CONFIG_STATE_FAIL;
-            setMessage(R.string.thing_reconnecting_error,true);
+            setMessage(R.string.thing_reconnecting_error, true);
             return;
         }
         mWifiManager.reconnect();
@@ -200,19 +198,19 @@ public class ThingSetupActivity extends AppCompatActivity implements
 
     private void configStateManager(ConfigState stateFilter) {
         if (configState != stateFilter && stateFilter != ConfigState.CONFIG_STATE_ANY) {
-            Log.i(TAG,"State Manager Filter:"+stateFilter.toString());
+            Log.i(TAG, "State Manager Filter:" + stateFilter.toString());
             return;
         }
-        Log.i(TAG,"State Manager: "+configState.toString());
-        switch(configState) {
+        Log.i(TAG, "State Manager: " + configState.toString());
+        switch (configState) {
             case CONFIG_STATE_IDLE:
                 configState = ConfigState.CONFIG_STATE_THING_CONNECTING;
-                setMessage(R.string.thing_connecting,false);
+                setMessage(R.string.thing_connecting, false);
                 connectToThing();
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        setMessage(R.string.thing_not_connected,false);
+                        setMessage(R.string.thing_not_connected, false);
                         configState = ConfigState.CONFIG_STATE_FAIL;
                     }
                 }, 10000);
@@ -220,38 +218,39 @@ public class ThingSetupActivity extends AppCompatActivity implements
             case CONFIG_STATE_THING_CONNECTED:
                 handler.removeCallbacksAndMessages(null);
                 configState = ConfigState.CONFIG_STATE_THING_SETUP;
-                setMessage(R.string.thing_configuring,false);
+                setMessage(R.string.thing_configuring, false);
                 doSetup();
                 break;
             case CONFIG_STATE_THING_OK:
                 configState = ConfigState.CONFIG_STATE_RECONNECT;
-                setMessage(R.string.thing_reconnecting,false);
+                setMessage(R.string.thing_reconnecting, false);
                 reconnectToInternet();
                 break;
             case CONFIG_STATE_RECONNECT:
-                setMessage(R.string.thing_waiting_response,false);
+                setMessage(R.string.thing_waiting_response, false);
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        setMessage(R.string.thing_never_responded,false);
+                        setMessage(R.string.thing_never_responded, false);
                         configState = ConfigState.CONFIG_STATE_FAIL;
                     }
                 }, 30000);
                 break;
             case CONFIG_STATE_RESPONSE_RECEIVED:
-                setMessage(R.string.thing_response_received,false);
+                setMessage(R.string.thing_response_received, false);
                 handler.removeCallbacksAndMessages(null);
-                AwsIntentService.resetToken(getApplicationContext());
-                AwsIntentService.startActionAddEndpoint(getApplicationContext());
+                //FirebaseIntentService.resetToken(getApplicationContext());
+                //FirebaseIntentService.startActionAddEndpoint(getApplicationContext());
                 break;
             case CONFIG_STATE_DONE:
-                setMessage(R.string.thing_setup_complete,false);
+                setMessage(R.string.thing_setup_complete, false);
                 Intent monitorActivity = new Intent(this, MonitorActivity.class);
-                monitorActivity.putExtra(Constants.EXTRA_THING_ID,thingName);
+                monitorActivity.putExtra(Constants.EXTRA_THING_ID, thingName);
                 startActivity(monitorActivity);
                 break;
         }
     }
+
     private void setMessage(int msgid, boolean error) {
         TextView messages = (TextView) findViewById(R.id.messages);
         messages.setText(getString(msgid));
@@ -261,11 +260,13 @@ public class ThingSetupActivity extends AppCompatActivity implements
             Log.i(TAG, getString(msgid));
         }
     }
+
     private void setMessage(String msg) {
         TextView messages = (TextView) findViewById(R.id.messages);
         messages.setText(msg);
         Log.i(TAG, msg);
     }
+
     private void connectToThing() {
         retryCount = 0;
         WifiConfiguration config = new WifiConfiguration();
@@ -274,7 +275,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
 
         netId = mWifiManager.addNetwork(config);
         if (netId == -1) {
-            setMessage(R.string.thing_not_connected,false);
+            setMessage(R.string.thing_not_connected, false);
         } else {
             mWifiManager.disconnect();
             mWifiManager.enableNetwork(netId, true);
@@ -292,11 +293,11 @@ public class ThingSetupActivity extends AppCompatActivity implements
             if (ninfo != null) {
                 if (ninfo.getType() == ConnectivityManager.TYPE_WIFI) {
                     TextView ssidPassword = (TextView) findViewById(R.id.password);
-                    Log.i(TAG,"WIFI Found, running setup: "+ninfo.getExtraInfo());
+                    Log.i(TAG, "WIFI Found, running setup: " + ninfo.getExtraInfo());
+
                     new ConfigThing().execute(
                             n,
-                            ssidPassword.getText().toString(),
-                            AwsIntentService.getCredentialProvider(getApplicationContext()).getCachedIdentityId());
+                            ssidPassword.getText().toString());
 
                 }
             }
@@ -320,15 +321,20 @@ public class ThingSetupActivity extends AppCompatActivity implements
         protected Void doInBackground(Object... data) {
             String rtn = "RESPONSE_ERROR";
             String thingName = "ERROR";
-            Network network = (Network)data[0];
+            Network network = (Network) data[0];
             conn.bindProcessToNetwork(network);
             try {
                 OkHttpClient client = new OkHttpClient();
                 client.setRetryOnConnectionFailure(true);
+                SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
+                        Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
+
                 RequestBody body = new FormEncodingBuilder()
-                        .add("username", (String)data[2])
+                        .add("email", sharedPref.getString(Constants.EMAIL,""))
+                        .add("password", sharedPref.getString(Constants.PASSWORD,""))
+                        .add("password", sharedPref.getString(Constants.USERID,""))
                         .add("ssid", currentSSID)
-                        .add("password", (String)data[1])
+                        .add("ssid_password", (String) data[1])
                         .add("ip", "")
                         .add("gw", "")
                         .add("netmask", "")
@@ -354,15 +360,16 @@ public class ThingSetupActivity extends AppCompatActivity implements
 
             Intent localIntent = new Intent(Constants.ACTION_POST_FORM)
                     .putExtra(Constants.EXTRA_POST_RESPONSE, rtn)
-                    .putExtra(Constants.EXTRA_POST_THINGNAME, thingName );
+                    .putExtra(Constants.EXTRA_POST_THINGNAME, thingName);
 
             // Broadcasts the Intent to receivers in this app.
-            Log.i(TAG,">>>>>>>>>>>>>>>> broadcasting POST_FORM");
+            Log.i(TAG, ">>>>>>>>>>>>>>>> broadcasting POST_FORM");
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(localIntent);
             return null;
         }
-    };
+    }
 
+    ;
 
 
     @Override
@@ -391,7 +398,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     private void hideKeyboard() {
         View view = this.getCurrentFocus();
         if (view != null) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }

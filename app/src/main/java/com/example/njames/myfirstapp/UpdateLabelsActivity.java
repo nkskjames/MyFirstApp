@@ -29,9 +29,20 @@ public class UpdateLabelsActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_update_labels);
         findViewById(R.id.update_button).setOnClickListener(this);
         thingName = this.getIntent().getStringExtra(Constants.EXTRA_THING_ID);
+        ArrayList<String> td = this.getIntent().getStringArrayListExtra(Constants.EXTRA_LABELS);
+        ArrayList<String> tu = this.getIntent().getStringArrayListExtra(Constants.EXTRA_THRESHOLDS_UPPER);
+        ArrayList<String> tl = this.getIntent().getStringArrayListExtra(Constants.EXTRA_THRESHOLDS_LOWER);
         views.add(findViewById(R.id.t0));
         views.add(findViewById(R.id.t1));
         views.add(findViewById(R.id.t2));
+
+        int i=0;
+        for (View view: views) {
+            ((EditText)view.findViewById(R.id.td)).setText(td.get(i));
+            ((EditText)view.findViewById(R.id.tu)).setText(tu.get(i));
+            ((EditText)view.findViewById(R.id.tl)).setText(tl.get(i));
+            i++;
+        }
     }
 
     @Override
@@ -45,7 +56,7 @@ public class UpdateLabelsActivity extends AppCompatActivity implements
     }
     private void updateLabels() {
         Log.i(TAG, "Updating labels: "+thingName);
-        CognitoCachingCredentialsProvider credentialsProvider = AwsIntentService.getCredentialProvider(getApplicationContext());
+        //CognitoCachingCredentialsProvider credentialsProvider = FirebaseIntentService.getCredentialProvider(getApplicationContext());
         RequestClass request = new RequestClass(thingName, FirebaseInstanceId.getInstance().getToken());
         for (View view : views) {
             String ts = ((EditText)view.findViewById(R.id.tu)).getText().toString();
@@ -57,6 +68,7 @@ public class UpdateLabelsActivity extends AppCompatActivity implements
             String td = ((EditText)view.findViewById(R.id.td)).getText().toString();
             request.add(td,tu,tl);
         }
+        /*
         LambdaInvokerFactory factory = new LambdaInvokerFactory(this.getApplicationContext(),
                 Regions.US_WEST_2, credentialsProvider);
         final UpdateThingDescInterface myInterface = factory.build(UpdateThingDescInterface.class);
@@ -75,5 +87,6 @@ public class UpdateLabelsActivity extends AppCompatActivity implements
                 }
             }
         }.execute(request);
+        */
     }
 }

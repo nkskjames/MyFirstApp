@@ -17,25 +17,26 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.Toast;
 
-import com.amazonaws.auth.CognitoCachingCredentialsProvider;
-import com.amazonaws.regions.Regions;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.Set;
 
 public class MainMenuActivity extends AppCompatActivity implements
-        View.OnClickListener, GoogleApiClient.OnConnectionFailedListener {
+        View.OnClickListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener {
 
     private static final String TAG = "MainMenuActivity";
     private GoogleApiClient mGoogleApiClient;
     private static final int RC_SIGN_IN = 9001;
     private Spinner list;
+    private FirebaseAuth mAuth;
+
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -45,22 +46,22 @@ public class MainMenuActivity extends AppCompatActivity implements
             //ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
             //list.setAdapter(thingAdapter);
             updateList();
-            Log.i(TAG,"updating thing list");
+            Log.i(TAG, "updating thing list");
         }
     };
-    IntentFilter mIntentFilter=new IntentFilter(Constants.ACTION_GET_THINGS);
+    IntentFilter mIntentFilter = new IntentFilter(Constants.ACTION_GET_THINGS);
 
     private void updateList() {
         SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
                 Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
-        Set<String> thingSet = sharedPref.getStringSet(Constants.THINGS_LIST,null);
+        Set<String> thingSet = sharedPref.getStringSet(Constants.THINGS_LIST, null);
         ArrayList<String> things = new ArrayList<String>();
         if (thingSet != null) {
-            for (String thing: thingSet) {
+            for (String thing : thingSet) {
                 things.add(thing);
             }
         }
-        ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
+        ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, things);
         list.setAdapter(thingAdapter);
     }
 
@@ -75,7 +76,9 @@ public class MainMenuActivity extends AppCompatActivity implements
         findViewById(R.id.monitor_button).setOnClickListener(this);
         findViewById(R.id.sign_out_button).setOnClickListener(this);
 
-        list = (Spinner)findViewById(R.id.thing_list);
+        mAuth = FirebaseAuth.getInstance();
+        mAuth.addAuthStateListener(this);
+        list = (Spinner) findViewById(R.id.thing_list);
         updateList();
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
@@ -95,15 +98,15 @@ public class MainMenuActivity extends AppCompatActivity implements
 
     @Override
     public void onBackPressed() {
-        Log.i(TAG,"selected back");
+        Log.i(TAG, "selected back");
         super.onBackPressed();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        Log.i(TAG,"selected");
+        Log.i(TAG, "selected");
         if (item.getItemId() == android.R.id.home) {
-            Log.i(TAG,"go home");
+            Log.i(TAG, "go home");
             Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
                     new ResultCallback<Status>() {
                         @Override
@@ -124,7 +127,9 @@ public class MainMenuActivity extends AppCompatActivity implements
                 startActivity(setupActivity);
                 break;
             case R.id.refresh_button:
-                AwsIntentService.startActionAddEndpoint(getApplicationContext());
+                //FirebaseIntentService.startActionAddEndpoint(getApplicationContext());
+                //Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                FirebaseIntentService.startActionThingInit(getApplicationContext(), (String) list.getSelectedItem() );
                 break;
             case R.id.monitor_button:
                 String thing = (String) list.getSelectedItem();
@@ -139,23 +144,19 @@ public class MainMenuActivity extends AppCompatActivity implements
                 }
                 break;
             case R.id.sign_out_button:
-                Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                        new ResultCallback<Status>() {
-                            @Override
-                            public void onResult(Status status) {
-                            finish();
-                            }
-                        });
+                mAuth.signOut();
                 break;
         }
     }
+
+    /*
     @Override
     public void finish() {
         Log.i(TAG,"finished");
         CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-                getApplicationContext(),    /* get the context for the application */
-                "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7",    /* Identity Pool ID */
-                Regions.US_WEST_2           /* Region for your identity pool--US_EAST_1 or EU_WEST_1*/
+                getApplicationContext(),
+                "us-west-2:96107a1e-261a-4a63-8b28-776d91dd44d7",
+                Regions.US_WEST_2
         );
         credentialsProvider.clear();
         Intent intent = new Intent();
@@ -163,11 +164,12 @@ public class MainMenuActivity extends AppCompatActivity implements
 
         super.finish();
     }
-
+*/
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed:" + connectionResult);
     }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -184,4 +186,23 @@ public class MainMenuActivity extends AppCompatActivity implements
         super.onPause();
     }
 
+    @Override
+    public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+        Log.i(TAG, "AuthStateChanged");
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            finish();
+        }
+        /*
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+                new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(Status status) {
+                        finish();
+                    }
+                }
+            );
+        }
+        */
+    }
 }
