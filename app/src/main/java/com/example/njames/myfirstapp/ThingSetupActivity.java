@@ -58,6 +58,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
         CONFIG_STATE_THING_SETUP,
         CONFIG_STATE_THING_OK,
         CONFIG_STATE_RECONNECT,
+        CONFIG_STATE_THING_ADDED_DB,
         CONFIG_STATE_RESPONSE_RECEIVED,
         CONFIG_STATE_DONE,
         CONFIG_STATE_FAIL,
@@ -65,7 +66,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
     }
 
     private ConfigState configState = ConfigState.CONFIG_STATE_IDLE;
-    private String thingName = "";
+    private String thing_id = "";
     private ConnectivityManager conn;
     private Handler handler = new Handler();
 
@@ -88,14 +89,18 @@ public class ThingSetupActivity extends AppCompatActivity implements
             }
             if (intent.getAction().equals(Constants.ACTION_POST_FORM)) {
                 String response = intent.getStringExtra(Constants.EXTRA_POST_RESPONSE);
-                String thingName = intent.getStringExtra(Constants.EXTRA_POST_THINGNAME);
-                handleConfigResponse(response, thingName);
+                String thing_id = intent.getStringExtra(Constants.EXTRA_POST_THINGNAME);
+                handleConfigResponse(response, thing_id);
+            }
+            if (intent.getAction().equals(Constants.ACTION_THING_INIT)) {
+                //configState = ConfigState.CONFIG_STATE_THING_ADDED_DB;
+                //configStateManager(configState);
             }
             if (intent.getAction().equals(Constants.ACTION_RECEIVE_DATA)) {
-                String msgThingName = intent.getStringExtra("thing_id");
-                Log.i(TAG, msgThingName + "," + thingName);
+                String msgthing_id = intent.getStringExtra("thing_id");
+                Log.i(TAG, msgthing_id + "," + thing_id);
                 if (configState == ConfigState.CONFIG_STATE_RECONNECT) {
-                    if (thingName.equals(msgThingName)) {
+                    if (thing_id.equals(msgthing_id)) {
                         configState = ConfigState.CONFIG_STATE_DONE;
                         configStateManager(configState);
                     }
@@ -146,9 +151,9 @@ public class ThingSetupActivity extends AppCompatActivity implements
     }
 
     // step 2
-    private void handleConfigResponse(String response, String thingName) {
-        this.thingName = thingName;
-        Log.i(TAG, "Thing setup response: " + response + ": " + thingName);
+    private void handleConfigResponse(String response, String thing_id) {
+        this.thing_id = thing_id;
+        Log.i(TAG, "Thing setup response: " + response + ": " + thing_id);
         if (response.equals("OK")) {
             configState = ConfigState.CONFIG_STATE_THING_OK;
             configStateManager(ConfigState.CONFIG_STATE_ANY);
@@ -227,6 +232,8 @@ public class ThingSetupActivity extends AppCompatActivity implements
                 reconnectToInternet();
                 break;
             case CONFIG_STATE_RECONNECT:
+                //Now that we know thing_id, add to database
+                FirebaseIntentService.startActionThingInit(getApplicationContext(),thing_id);
                 setMessage(R.string.thing_waiting_response, false);
                 handler.postDelayed(new Runnable() {
                     @Override
@@ -245,7 +252,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
             case CONFIG_STATE_DONE:
                 setMessage(R.string.thing_setup_complete, false);
                 Intent monitorActivity = new Intent(this, MonitorActivity.class);
-                monitorActivity.putExtra(Constants.EXTRA_THING_ID, thingName);
+                monitorActivity.putExtra(Constants.EXTRA_THING_ID, thing_id);
                 startActivity(monitorActivity);
                 break;
         }
@@ -309,7 +316,9 @@ public class ThingSetupActivity extends AppCompatActivity implements
         switch (v.getId()) {
             case R.id.connect_button:
                 hideKeyboard();
-                configState = ConfigState.CONFIG_STATE_IDLE;
+                //configState = ConfigState.CONFIG_STATE_IDLE;
+                this.thing_id = "BBQTemp_240AC405D0D4";
+                configState = ConfigState.CONFIG_STATE_RECONNECT;
                 configStateManager(ConfigState.CONFIG_STATE_ANY);
                 break;
         }
@@ -320,7 +329,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
         @Override
         protected Void doInBackground(Object... data) {
             String rtn = "RESPONSE_ERROR";
-            String thingName = "ERROR";
+            String thing_id = "ERROR";
             Network network = (Network) data[0];
             conn.bindProcessToNetwork(network);
             try {
@@ -346,8 +355,8 @@ public class ThingSetupActivity extends AppCompatActivity implements
                         .build();
                 Response response = client.newCall(request).execute();
                 Log.i(TAG, "Response: " + response.code());
-                thingName = response.body().string();
-                Log.i(TAG, "Body: " + thingName);
+                thing_id = response.body().string();
+                Log.i(TAG, "Body: " + thing_id);
 
                 if (response.code() == 200) {
                     rtn = "OK";
@@ -360,7 +369,7 @@ public class ThingSetupActivity extends AppCompatActivity implements
 
             Intent localIntent = new Intent(Constants.ACTION_POST_FORM)
                     .putExtra(Constants.EXTRA_POST_RESPONSE, rtn)
-                    .putExtra(Constants.EXTRA_POST_THINGNAME, thingName);
+                    .putExtra(Constants.EXTRA_POST_THINGNAME, thing_id);
 
             // Broadcasts the Intent to receivers in this app.
             Log.i(TAG, ">>>>>>>>>>>>>>>> broadcasting POST_FORM");

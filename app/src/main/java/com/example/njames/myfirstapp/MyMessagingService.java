@@ -66,7 +66,7 @@ public class MyMessagingService extends FirebaseMessagingService {
                     intent.putExtra("td", td);
                     intent.putExtra("tu", tu);
                     intent.putExtra("tl", tl);
-                    intent.putExtra("thingName", json.getString("thingName"));
+                    intent.putExtra("thing_id", json.getString("thing_id"));
                     LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
                 } else {
                     Log.e(TAG,"Unknown command: "+command);

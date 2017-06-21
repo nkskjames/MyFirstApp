@@ -40,11 +40,6 @@ public class MainMenuActivity extends AppCompatActivity implements
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //ArrayList<String> things =
-            //        intent.getStringArrayListExtra(Constants.EXTRA_THING_LIST);
-
-            //ArrayAdapter<String> thingAdapter = new ArrayAdapter<String>(getApplicationContext(),android.R.layout.simple_list_item_1,things);
-            //list.setAdapter(thingAdapter);
             updateList();
             Log.i(TAG, "updating thing list");
         }
@@ -129,7 +124,8 @@ public class MainMenuActivity extends AppCompatActivity implements
             case R.id.refresh_button:
                 //FirebaseIntentService.startActionAddEndpoint(getApplicationContext());
                 //Auth.GoogleSignInApi.signOut(mGoogleApiClient);
-                FirebaseIntentService.startActionThingInit(getApplicationContext(), (String) list.getSelectedItem() );
+                //FirebaseIntentService.startActionThingInit(getApplicationContext(), (String) list.getSelectedItem() );
+                FirebaseIntentService.startActionGetThings(getApplicationContext());
                 break;
             case R.id.monitor_button:
                 String thing = (String) list.getSelectedItem();
