@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Wifi BBQ</string>
-    <string name="thing_not_connected">Unable to connected to BBQ Temp.  Please try again.</string>
+    <string name="thing_not_connected">Unable to connect to BBQ Temp.  Please try again.</string>
     <string name="thing_never_responded">Thing never responded.  Please reset and try again.</string>
     <string name="thing_connecting">Connecting...</string>
     <string name="thing_configuring">Configuring...</string>

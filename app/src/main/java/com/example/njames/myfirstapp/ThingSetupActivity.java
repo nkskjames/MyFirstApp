@@ -24,6 +24,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.squareup.okhttp.FormEncodingBuilder;
 import com.squareup.okhttp.OkHttpClient;
@@ -315,10 +316,10 @@ public class ThingSetupActivity extends AppCompatActivity implements
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.connect_button:
-                hideKeyboard();
-                //configState = ConfigState.CONFIG_STATE_IDLE;
-                this.thing_id = "BBQTemp_240AC405D0D4";
-                configState = ConfigState.CONFIG_STATE_RECONNECT;
+                Constants.hideKeyboard(this);
+                configState = ConfigState.CONFIG_STATE_IDLE;
+                //this.thing_id = "BBQTemp_240AC405D0D4";
+                //configState = ConfigState.CONFIG_STATE_RECONNECT;
                 configStateManager(ConfigState.CONFIG_STATE_ANY);
                 break;
         }
@@ -337,11 +338,11 @@ public class ThingSetupActivity extends AppCompatActivity implements
                 client.setRetryOnConnectionFailure(true);
                 SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
                         Constants.PREFKEY_BBQ_AUTH, Context.MODE_PRIVATE);
-
+                FirebaseAuth mAuth = FirebaseAuth.getInstance();
                 RequestBody body = new FormEncodingBuilder()
                         .add("email", sharedPref.getString(Constants.EMAIL,""))
                         .add("password", sharedPref.getString(Constants.PASSWORD,""))
-                        .add("password", sharedPref.getString(Constants.USERID,""))
+                        .add("userid", mAuth.getCurrentUser().getUid())
                         .add("ssid", currentSSID)
                         .add("ssid_password", (String) data[1])
                         .add("ip", "")
@@ -402,13 +403,5 @@ public class ThingSetupActivity extends AppCompatActivity implements
         unregisterReceiver(mReceiver);
         LocalBroadcastManager.getInstance(getApplicationContext()).unregisterReceiver(mReceiver);
         super.onPause();
-    }
-
-    private void hideKeyboard() {
-        View view = this.getCurrentFocus();
-        if (view != null) {
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
     }
 }
